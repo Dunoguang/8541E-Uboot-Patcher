@@ -46,6 +46,25 @@ In --warn / --info a literal backslash-n becomes a newline; oversized
 text is rejected before anything is written.  `--verbose` turns on the
 full anchor-location / injection logs.
 
+## Web version (`web/`)
+
+A fully client-side port of the same toolchain -- open `web/index.html`
+in any modern browser (double-click is fine: no server, no CDN, no
+external references; the files never leave the machine):
+
+- drop in any subset of the three images (uboot alone works),
+- each file is analysed on the spot (lock / banner / usblog states for
+  uboot, secure-boot / AVB states for the others),
+- tick the functions you want (all three are on by default) and press
+  the button,
+- download the results; every product shows its md5 next to the button.
+
+The browser core (`web/core.js` + `web/tpl.js`) is a line-by-line port
+of the python engines and was verified byte-exact: `node web/test_node.js`
+re-runs the same four-case matrix as `tests/run_cases.py` (m9u full run,
+ai3 two-step, dw99 YC image, idempotent re-run) and must print
+`regress: PASS`.
+
 ## Test matrix (2026-10-02, all green)
 
 | case | input | result |
