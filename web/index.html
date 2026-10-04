@@ -5,101 +5,326 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>8541E-Uboot-Patcher</title>
 <style>
-:root{--bg:#0e1116;--card:#161b22;--line:#262d36;--fg:#e6edf3;--dim:#8b949e;
-      --ok:#3fb950;--warn:#d29922;--err:#f85149;--acc:#58a6ff}
+:root{
+  --bg:#0b0f14;
+  --bg-soft:#0a0e13;
+  --card:#141a22;
+  --line:#232c37;
+  --fg:#e6edf3;
+  --fg-soft:#c9d1d9;
+  --dim:#8b949e;
+  --ok:#3fb950;
+  --warn:#d29922;
+  --err:#f85149;
+  --acc:#58a6ff;
+  --acc-dim:rgba(88,166,255,.12);
+  --acc-line:rgba(88,166,255,.35);
+  --radius:14px;
+}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);
-     font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif}
-header{padding:28px 20px 6px;max-width:760px;margin:0 auto}
-h1{margin:0;font-size:22px;letter-spacing:.3px}
-h1 span{color:var(--acc)}
-.sub{color:var(--dim);margin:6px 0 0;font-size:13px}
-main{max-width:760px;margin:0 auto;padding:14px 20px 60px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;
-      padding:16px 18px;margin:14px 0}
-.card h2{margin:0 0 12px;font-size:13px;color:var(--dim);font-weight:600;
-         text-transform:uppercase;letter-spacing:.8px}
-.row{display:flex;align-items:center;gap:10px;padding:7px 0;flex-wrap:wrap}
-.row>label{width:120px;flex:none}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;color:var(--fg);
+  font:15px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;
+  background:
+    radial-gradient(900px 520px at 50% -260px, rgba(88,166,255,.13), transparent 70%),
+    radial-gradient(700px 400px at 100% 0%, rgba(88,166,255,.05), transparent 65%),
+    var(--bg);
+  background-attachment:fixed;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- header ---------- */
+header{max-width:760px;margin:0 auto;padding:36px 20px 0}
+h1{margin:0;font-size:23px;font-weight:700;letter-spacing:.2px;line-height:1.3}
+h1 span{
+  background:linear-gradient(92deg,#79c0ff,#58a6ff 60%,#4d9cf5);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.sub{color:var(--dim);margin:8px 0 0;font-size:13px;line-height:1.65}
+
+/* ---------- topbar / language ---------- */
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lang{
+  font-family:inherit;font-size:12.5px;font-weight:600;color:var(--fg-soft);
+  background:var(--bg-soft);border:1px solid var(--line);border-radius:9px;
+  padding:6px 10px;cursor:pointer;transition:border-color .16s,box-shadow .16s;
+}
+.lang:hover{border-color:var(--acc-line)}
+.lang:focus{outline:none;border-color:rgba(88,166,255,.6);box-shadow:0 0 0 3px rgba(88,166,255,.13)}
+header::after{
+  content:"";display:block;height:1px;margin:20px 0 0;
+  background:linear-gradient(90deg,rgba(88,166,255,.45),rgba(88,166,255,.05) 55%,transparent);
+}
+
+/* ---------- layout ---------- */
+main{max-width:760px;margin:0 auto;padding:6px 20px 60px}
+.card{
+  position:relative;
+  background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,0)),var(--card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:18px 20px;
+  margin:16px 0;
+  box-shadow:0 16px 34px -28px #000, inset 0 1px 0 rgba(255,255,255,.025);
+}
+.card::before{
+  content:"";position:absolute;left:0;right:0;top:0;height:1px;pointer-events:none;
+  border-radius:var(--radius) var(--radius) 0 0;
+  background:linear-gradient(90deg,transparent,rgba(88,166,255,.35),transparent);
+  opacity:.7;
+}
+.card h2{
+  display:flex;align-items:center;gap:10px;
+  margin:0 0 14px;font-size:12.5px;font-weight:600;color:var(--dim);
+  text-transform:uppercase;letter-spacing:1px;
+}
+.card h2::before{
+  content:attr(data-step);
+  display:inline-flex;align-items:center;justify-content:center;
+  width:21px;height:21px;flex:none;border-radius:50%;
+  background:var(--acc-dim);border:1px solid rgba(88,166,255,.32);
+  color:var(--acc);font-size:11px;font-weight:700;letter-spacing:0;
+  box-shadow:0 0 12px -4px rgba(88,166,255,.6);
+}
+
+/* ---------- rows ---------- */
+.row{display:flex;align-items:center;gap:12px;padding:8px 0;flex-wrap:wrap}
+.row>label{width:116px;flex:none;font-size:13.5px;color:var(--fg-soft)}
 .req{color:var(--acc);font-size:12px}
 .opt{color:var(--dim);font-size:12px}
-input[type=file]{flex:1;min-width:190px;color:var(--dim);font-size:13px}
-.badge{font-size:12px;padding:2px 10px;border-radius:20px;border:1px solid var(--line);
-       color:var(--dim);white-space:nowrap}
-.badge.ok{color:var(--ok);border-color:var(--ok)}
-.badge.warn{color:var(--warn);border-color:var(--warn)}
-.badge.err{color:var(--err);border-color:var(--err)}
-#ub-status{margin:0 0 6px 130px}
-.chip{display:inline-block;font-size:12px;padding:2px 10px;border-radius:20px;
-      border:1px solid var(--line);margin:0 6px 4px 0;color:var(--dim)}
-.chip.ok{color:var(--ok);border-color:var(--ok)}
-.chip.warn{color:var(--warn);border-color:var(--warn)}
-.chip.err{color:var(--err);border-color:var(--err)}
-.chk{display:block;padding:4px 0}
-.chk input{margin-right:8px}
-.banner-texts{margin-top:10px;display:flex;flex-direction:column;gap:8px}
-.banner-texts label{font-size:13px;color:var(--dim)}
-.banner-texts input{width:100%;margin-top:4px;background:#0d1117;color:var(--fg);
-  border:1px solid var(--line);border-radius:8px;padding:8px 10px;
-  font:13px ui-monospace,SFMono-Regular,Menlo,monospace}
-button{background:var(--acc);color:#04121f;border:0;border-radius:9px;font-weight:600;
-       padding:10px 22px;font-size:15px;cursor:pointer}
-button:disabled{opacity:.5;cursor:default}
-button.ghost{background:transparent;color:var(--acc);border:1px solid var(--acc);
-             padding:7px 16px;font-size:13px;margin-top:8px}
-#log{background:#0d1117;border:1px solid var(--line);border-radius:9px;margin-top:14px;
-     padding:12px;font:12.5px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
-     white-space:pre-wrap;min-height:60px;max-height:420px;overflow:auto;color:#c9d1d9}
+
+/* ---------- file input ---------- */
+input[type=file]{
+  flex:1;min-width:190px;font-size:13px;color:var(--dim);font-family:inherit;
+  background:var(--bg-soft);
+  border:1px dashed #2b3541;border-radius:10px;
+  padding:5px 8px;cursor:pointer;
+  transition:border-color .16s,background .16s,box-shadow .16s;
+}
+input[type=file]:hover{border-color:var(--acc-line);background:#0d141c}
+input[type=file]:focus-visible{
+  outline:none;border-color:rgba(88,166,255,.65);
+  box-shadow:0 0 0 3px rgba(88,166,255,.14);
+}
+input[type=file]::file-selector-button{
+  font-family:inherit;font-size:12.5px;font-weight:600;
+  color:var(--acc);background:var(--acc-dim);
+  border:1px solid rgba(88,166,255,.32);border-radius:7px;
+  padding:6px 14px;margin-right:12px;cursor:pointer;
+  transition:background .16s,border-color .16s;
+}
+input[type=file]::file-selector-button:hover{
+  background:rgba(88,166,255,.22);border-color:rgba(88,166,255,.55);
+}
+
+/* ---------- badges ---------- */
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  font-size:12px;padding:3px 11px;border-radius:20px;
+  border:1px solid var(--line);color:var(--dim);white-space:nowrap;
+  background:rgba(255,255,255,.015);
+  transition:color .16s,border-color .16s,background .16s;
+}
+.badge::before{
+  content:"";width:6px;height:6px;border-radius:50%;
+  background:currentColor;opacity:.7;flex:none;
+}
+.badge.ok{color:var(--ok);border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.08)}
+.badge.warn{color:var(--warn);border-color:rgba(210,153,34,.5);background:rgba(210,153,34,.08)}
+.badge.err{color:var(--err);border-color:rgba(248,81,73,.5);background:rgba(248,81,73,.08)}
+.badge.ok::before,.badge.warn::before,.badge.err::before{box-shadow:0 0 8px currentColor;opacity:1}
+
+#ub-status{margin:2px 0 8px 128px}
+.chip{
+  display:inline-block;font-size:12px;padding:2px 11px;border-radius:20px;
+  border:1px solid var(--line);margin:0 6px 4px 0;color:var(--dim);
+  background:rgba(255,255,255,.015);
+}
+.chip.ok{color:var(--ok);border-color:rgba(63,185,80,.5);background:rgba(63,185,80,.08)}
+.chip.warn{color:var(--warn);border-color:rgba(210,153,34,.5);background:rgba(210,153,34,.08)}
+.chip.err{color:var(--err);border-color:rgba(248,81,73,.5);background:rgba(248,81,73,.08)}
+
+/* ---------- checkboxes ---------- */
+.chk{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 10px;margin:0 -10px;border-radius:10px;
+  font-size:14px;color:var(--fg-soft);cursor:pointer;
+  transition:background .16s;
+}
+.chk:hover{background:rgba(88,166,255,.06)}
+.chk input[type=checkbox]{
+  appearance:none;-webkit-appearance:none;
+  width:18px;height:18px;flex:none;margin:0;
+  border:1.5px solid #38424f;border-radius:6px;
+  background:var(--bg-soft);cursor:pointer;position:relative;
+  transition:background .16s,border-color .16s,box-shadow .16s;
+}
+.chk input[type=checkbox]:hover{border-color:var(--acc-line)}
+.chk input[type=checkbox]:checked{
+  background:var(--acc);border-color:var(--acc);
+  box-shadow:0 0 0 3px rgba(88,166,255,.16),0 0 14px -4px rgba(88,166,255,.9);
+}
+.chk input[type=checkbox]:checked::after{
+  content:"";position:absolute;left:5px;top:1.5px;
+  width:5px;height:9px;
+  border:2px solid #04121f;border-top:0;border-left:0;
+  transform:rotate(42deg);
+}
+.chk input[type=checkbox]:focus-visible{
+  outline:none;box-shadow:0 0 0 3px rgba(88,166,255,.28);
+}
+
+/* ---------- banner text inputs ---------- */
+.banner-texts{margin-top:12px;display:flex;flex-direction:column;gap:12px}
+.banner-texts label{font-size:12.5px;color:var(--dim);display:block}
+.banner-texts input{
+  width:100%;margin-top:6px;display:block;
+  background:var(--bg-soft);color:var(--fg);
+  border:1px solid var(--line);border-radius:9px;
+  padding:9px 12px;
+  font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  transition:border-color .16s,box-shadow .16s;
+}
+.banner-texts input:hover{border-color:#2e3843}
+.banner-texts input:focus{
+  outline:none;border-color:rgba(88,166,255,.6);
+  box-shadow:0 0 0 3px rgba(88,166,255,.13);
+}
+
+/* ---------- buttons ---------- */
+button{
+  font-family:inherit;font-size:15px;font-weight:700;letter-spacing:.2px;
+  color:#04121f;cursor:pointer;
+  background:linear-gradient(180deg,#63adff,#3b8cf0);
+  border:0;border-radius:10px;padding:11px 26px;
+  box-shadow:0 8px 20px -10px rgba(88,166,255,.85), inset 0 1px 0 rgba(255,255,255,.28);
+  transition:transform .13s,box-shadow .2s,filter .16s;
+}
+button:hover:not(:disabled){
+  filter:brightness(1.07);transform:translateY(-1px);
+  box-shadow:0 12px 26px -10px rgba(88,166,255,1), inset 0 1px 0 rgba(255,255,255,.32);
+}
+button:active:not(:disabled){transform:translateY(0) scale(.99)}
+button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.35)}
+button:focus-visible{outline:2px solid var(--acc);outline-offset:3px}
+
+button.ghost{
+  background:transparent;color:var(--acc);
+  border:1px solid rgba(88,166,255,.45);
+  padding:8px 18px;font-size:13px;font-weight:600;
+  margin-top:8px;box-shadow:none;
+}
+button.ghost:hover:not(:disabled){
+  background:var(--acc-dim);border-color:rgba(88,166,255,.7);
+  transform:none;box-shadow:none;filter:none;
+}
+
+/* ---------- log ---------- */
+#log{
+  background:var(--bg-soft);
+  border:1px solid var(--line);
+  border-left:2px solid rgba(88,166,255,.4);
+  border-radius:10px;margin-top:16px;padding:14px 15px;
+  font:12.5px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  white-space:pre-wrap;word-break:break-word;
+  min-height:60px;max-height:420px;overflow:auto;
+  color:var(--fg-soft);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.02);
+}
 #log:empty{display:none}
-.dl-row{display:flex;align-items:center;gap:12px;padding:7px 0;flex-wrap:wrap}
-.dl-row .meta{color:var(--dim);font-size:12px;font-family:ui-monospace,monospace}
-footer{color:var(--dim);font-size:12px;text-align:center;padding:0 20px 30px}
+#log::-webkit-scrollbar{width:10px;height:10px}
+#log::-webkit-scrollbar-track{background:transparent}
+#log::-webkit-scrollbar-thumb{
+  background:#28313c;border-radius:8px;border:2px solid var(--bg-soft);
+}
+#log::-webkit-scrollbar-thumb:hover{background:#3a4551}
+
+/* ---------- downloads ---------- */
+.dl-row{
+  display:flex;align-items:center;gap:12px;padding:9px 0;flex-wrap:wrap;
+  border-bottom:1px solid rgba(255,255,255,.045);
+}
+.dl-row:last-child{border-bottom:0}
+.dl-row .meta{
+  color:var(--dim);font-size:12px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+.dl-row a{color:var(--acc);text-decoration:none}
+.dl-row a:hover{text-decoration:underline}
+
+/* ---------- footer ---------- */
+footer{color:var(--dim);font-size:12px;text-align:center;padding:0 20px 34px}
+footer::before{
+  content:"";display:block;width:52px;height:1px;margin:0 auto 16px;
+  background:linear-gradient(90deg,transparent,rgba(88,166,255,.5),transparent);
+}
+
+/* ---------- responsive ---------- */
+@media (max-width:560px){
+  header{padding-top:26px}
+  h1{font-size:20px}
+  main{padding-left:14px;padding-right:14px}
+  .card{padding:16px 15px}
+  .row>label{width:100%;margin-bottom:-4px}
+  #ub-status{margin-left:0}
+  button{width:100%}
+  button.ghost{width:auto}
+}
 </style>
 </head>
 <body>
 <header>
-  <h1>8541E-Uboot-Patcher <span>Web</span></h1>
-  <p class="sub">SL8541e 手表三合一：去保护（splloader / uboot / trustos）＋ usblog 实时日志注入 ＋ 横幅替换。全程本地处理，文件不上传。</p>
+  <div class="topbar">
+    <h1>8541E-Uboot-Patcher <span>Web</span></h1>
+    <select id="lang" class="lang" aria-label="Language" title="语言 / Language / Idioma">
+      <option value="zh">中文</option>
+      <option value="en">English</option>
+      <option value="pt">Português</option>
+    </select>
+  </div>
+  <p class="sub" data-i18n="sub">SL8541e 手表三合一：去保护（splloader / uboot / trustos）＋ usblog 实时日志注入 ＋ 横幅替换。全程本地处理，文件不上传。</p>
 </header>
 <main>
   <section class="card">
-    <h2>1 · 选择镜像</h2>
-    <div class="row"><label>splloader <span class="opt">可选</span></label>
-      <input type="file" id="f-spl"><span class="badge idle" id="b-spl">未选择</span></div>
-    <div class="row"><label>uboot <span class="req">必需</span></label>
-      <input type="file" id="f-ub"><span class="badge idle" id="b-ub">未选择</span></div>
+    <h2 data-step="1" data-i18n="step1">选择镜像</h2>
+    <div class="row"><label>splloader <span class="opt" data-i18n="opt">可选</span></label>
+      <input type="file" id="f-spl"><span class="badge idle" id="b-spl" data-i18n="none">未选择</span></div>
+    <div class="row"><label>uboot <span class="req" data-i18n="req">必需</span></label>
+      <input type="file" id="f-ub"><span class="badge idle" id="b-ub" data-i18n="none">未选择</span></div>
     <div id="ub-status"></div>
-    <div class="row"><label>trustos <span class="opt">可选</span></label>
-      <input type="file" id="f-tr"><span class="badge idle" id="b-tr">未选择</span></div>
+    <div class="row"><label>trustos <span class="opt" data-i18n="opt">可选</span></label>
+      <input type="file" id="f-tr"><span class="badge idle" id="b-tr" data-i18n="none">未选择</span></div>
   </section>
 
   <section class="card">
-    <h2>2 · 选项</h2>
-    <label class="chk"><input type="checkbox" id="o-unlock" checked> 去保护 — splloader secure boot / uboot lock / trustos AVB</label>
-    <label class="chk"><input type="checkbox" id="o-usblog" checked> usblog 注入 — uboot USB 实时日志</label>
-    <label class="chk"><input type="checkbox" id="o-banner" checked> 替换横幅</label>
+    <h2 data-step="2" data-i18n="step2">选项</h2>
+    <label class="chk"><input type="checkbox" id="o-unlock" checked> <span data-i18n="opt_unlock">去保护 — splloader secure boot / uboot lock / trustos AVB</span></label>
+    <label class="chk"><input type="checkbox" id="o-usblog" checked> <span data-i18n="opt_usblog">usblog 注入 — uboot USB 实时日志</span></label>
+    <label class="chk"><input type="checkbox" id="o-banner" checked> <span data-i18n="opt_banner">替换横幅</span></label>
     <div class="banner-texts">
-      <label>warn 横幅（≤48 字节；输入里的 \n 会转义为换行）
+      <label><span data-i18n="lbl_warn">warn 横幅（≤48 字节；输入里的 \n 会转义为换行）</span>
         <input id="t-warn" value="QQ:3981750101\nBoot Format OK, Kernel Started...\n"></label>
-      <label>info 横幅（≤35 字节）
+      <label><span data-i18n="lbl_info">info 横幅（≤35 字节）</span>
         <input id="t-info" value="SPRD U-Boot - Patch By Dunoguang  \n"></label>
     </div>
   </section>
 
   <section class="card">
-    <h2>3 · 执行</h2>
-    <button id="go">处理</button>
+    <h2 data-step="3" data-i18n="step3">执行</h2>
+    <button id="go" data-i18n="btn_go">处理</button>
     <pre id="log"></pre>
   </section>
 
   <section class="card" id="dl-card" hidden>
-    <h2>4 · 下载</h2>
+    <h2 data-step="4" data-i18n="step4">下载</h2>
     <div id="downloads"></div>
   </section>
 </main>
-<footer>MIT © 2026 Dunoguang · 8541E-Uboot-Patcher</footer>
+<footer data-i18n="footer">MIT © 2026 Dunoguang · 8541E-Uboot-Patcher</footer>
 <script src="tpl.js"></script>
 <script src="core.js"></script>
+<script src="i18n.js"></script>
 <script src="ui.js"></script>
 </body>
 </html>

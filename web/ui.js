@@ -1,10 +1,12 @@
-/* 8541E-Uboot-Patcher -- browser UI.  Needs tpl.js + core.js loaded first. */
+/* 8541E-Uboot-Patcher -- browser UI.  Needs tpl.js + core.js + i18n.js loaded first. */
 (function () {
 'use strict';
 var C = window.UP84;
 var $ = function (id) { return document.getElementById(id); };
+var T = function (key, vars) { return window.I18N.t(key, vars); };
 
 var files = { spl: null, ub: null, tr: null };
+var lastDls = null;
 
 function log(msg) {
   var el = $('log');
@@ -20,6 +22,11 @@ function setBadge(id, cls, text) {
 function chip(cls, text) {
   return '<span class="chip ' + cls + '">' + text + '</span>';
 }
+function stateLabel(s) {
+  if (s === 'factory') return T('st_factory');
+  if (s === 'modified') return T('st_modified');
+  return s;
+}
 
 function readInto(which) {
   var f = $('f-' + which).files && $('f-' + which).files[0];
@@ -33,39 +40,37 @@ function readInto(which) {
 function analyze(which) {
   if (which === 'ub') $('ub-status').innerHTML = '';
   var d = files[which];
-  if (!d) { setBadge('b-' + which, 'idle', '未选择'); return; }
+  if (!d) { setBadge('b-' + which, 'idle', T('none')); return; }
   try {
     if (which === 'spl') {
       var r = C.findSplloader(d);
       setBadge('b-spl', r.patched ? 'ok' : 'warn',
-               (r.patched ? '已去保护' : '受保护') + ' @ ' + C.hexOff(r.pos));
+               (r.patched ? T('st_patched') : T('st_protected')) + ' @ ' + C.hexOff(r.pos));
     } else if (which === 'tr') {
-      var t = C.findTrustos(d);
-      setBadge('b-tr', t.patched ? 'ok' : 'warn',
-               (t.patched ? '已去保护' : '受保护') + ' · ' + t.sites.length + ' sites');
+      var t2 = C.findTrustos(d);
+      setBadge('b-tr', t2.patched ? 'ok' : 'warn',
+               (t2.patched ? T('st_patched') : T('st_protected')) + ' ' + T('n_sites', { n: t2.sites.length }));
     } else {
       var out = [];
       try {
         var lk = C.findUbootLock(d);
-        out.push(chip(lk.patched ? 'ok' : 'warn', 'lock: ' + (lk.patched ? '已解锁' : '受保护')));
-      } catch (e) { out.push(chip('err', 'lock: 无法识别')); }
+        out.push(chip(lk.patched ? 'ok' : 'warn', 'lock: ' + (lk.patched ? T('st_unlocked') : T('st_protected'))));
+      } catch (e) { out.push(chip('err', 'lock: ' + T('st_unknown'))); }
       try {
         var bn = C.findBanners(d);
-        var st = bn.warn.state === 'factory' ? '原厂' :
-                 bn.warn.state === 'dunoguang' ? 'Dunoguang' : '已修改';
-        out.push(chip(bn.warn.state === 'dunoguang' ? 'ok' : 'warn', 'banner: ' + st));
-      } catch (e) { out.push(chip('err', 'banner: 无法识别')); }
+        out.push(chip(bn.warn.state === 'dunoguang' ? 'ok' : 'warn', 'banner: ' + stateLabel(bn.warn.state)));
+      } catch (e) { out.push(chip('err', 'banner: ' + T('st_unknown'))); }
       try {
         var det = C.detectUsblog(d);
         out.push(chip(det.state === 'injected' ? 'ok' : 'warn',
-          'usblog: ' + (det.state === 'injected' ? '已注入' :
-                        det.state === 'clean' ? '未注入' : '未知')));
-      } catch (e) { out.push(chip('err', 'usblog: 不适用')); }
+          'usblog: ' + (det.state === 'injected' ? T('st_injected') :
+                        det.state === 'clean' ? T('st_clean') : T('st_na'))));
+      } catch (e) { out.push(chip('err', 'usblog: ' + T('st_na'))); }
       $('ub-status').innerHTML = out.join('');
-      setBadge('b-ub', 'ok', d.length + ' bytes');
+      setBadge('b-ub', 'ok', d.length + ' ' + T('unit_bytes'));
     }
   } catch (e) {
-    setBadge('b-' + which, 'err', '无法识别');
+    setBadge('b-' + which, 'err', T('st_unknown'));
   }
 }
 
@@ -89,113 +94,121 @@ function processAll() {
   var infoTxt = $('t-info').value;
   var dls = [];
   var fails = 0;
+  var UB = T('unit_bytes');
 
-  if (!files.ub && !files.spl && !files.tr) { log('请先选择镜像文件'); return; }
+  if (!files.ub && !files.spl && !files.tr) { log(T('need_files')); return; }
   log('8541E-Uboot-Patcher');
   log('');
 
   if (files.spl && doUnlock) {
-    log('== splloader (' + files.spl.length + ' bytes) ==');
+    log(T('l_hdr', { what: 'splloader', n: files.spl.length, unit: UB }));
     try {
       var r = C.findSplloader(files.spl);
       var splOut;
       if (r.patched) {
         splOut = files.spl;
-        log('   secure-boot : already patched (kept)  [' + C.hexOff(r.pos) + ']');
+        log(T('l_spl_keep', { off: C.hexOff(r.pos) }));
       } else {
         splOut = C.patchSplloader(files.spl, r);
-        log('   secure-boot : protected -> patched  [bl #0x6740 -> b #0x55dc @ ' + C.hexOff(r.pos) + ']');
+        log(T('l_spl_patch', { off: C.hexOff(r.pos) }));
       }
       var v = C.verifySplloader(splOut);
-      log('   verify      : ' + (v.ok ? 'ok  (' + v.note + ')' : 'FAILED (' + v.note + ')'));
+      log(v.ok ? T('l_verify_ok', { note: v.note }) : T('l_verify_fail', { note: v.note }));
       if (!v.ok) fails++;
-      log('   audit       : changed ' + C.countBytes(C.diffZones(files.spl, splOut)) + ' bytes');
+      log(T('l_audit', { n: C.countBytes(C.diffZones(files.spl, splOut)), unit: UB }));
       dls.push(['splloader-no-secure-boot.img', splOut]);
-    } catch (e) { log('   ERROR: ' + (e.message || e)); fails++; }
+    } catch (e) { log(T('l_err', { msg: (e.message || e) })); fails++; }
   } else if (files.spl) {
-    log('== splloader : 跳过（选项关闭） ==');
+    log(T('l_skip_hdr', { what: 'splloader', skip: T('skip_opt') }));
     dls.push(['splloader-no-secure-boot.img', files.spl]);
   }
 
   if (files.ub) {
-    log('== uboot (' + files.ub.length + ' bytes) ==');
+    log(T('l_hdr', { what: 'uboot', n: files.ub.length, unit: UB }));
     var ubc = files.ub;
     try {
       if (doUnlock) {
         var lk = C.findUbootLock(ubc);
-        if (lk.patched) log('   lock        : already patched (kept)  [' + C.hexOff(lk.pos) + ']');
+        if (lk.patched) log(T('l_lock_keep', { off: C.hexOff(lk.pos) }));
         else {
           ubc = C.patchLockOnly(ubc, lk);
-          log('   lock        : protected -> patched  [nop x3 @ ' + C.hexOff(lk.pos) + ']');
+          log(T('l_lock_patch', { off: C.hexOff(lk.pos) }));
         }
-      } else log('   lock        : 跳过（选项关闭）');
+      } else log(T('l_lock_skip', { skip: T('skip_opt') }));
 
       if (doBanner) {
         var bn = C.findBanners(ubc);
         var wb = C.textToBytes(warnTxt, bn.warn.slot, 'warn');
         var ib = C.textToBytes(infoTxt, bn.info.slot, 'info');
-        if (C.bytesEqual(bn.warn.text, wb)) log('   banner warn : ' + bn.warn.state + ' (kept)');
+        if (C.bytesEqual(bn.warn.text, wb)) log(T('l_ban_keep', { which: 'warn', state: stateLabel(bn.warn.state) }));
         else {
           ubc = C.applyText(ubc, bn.warn, wb, 'warn');
-          log('   banner warn : ' + bn.warn.state + ' -> replaced  [' + wb.length + '/' + (bn.warn.slot - 1) + ' bytes]');
+          log(T('l_ban_repl', { which: 'warn', state: stateLabel(bn.warn.state), n: wb.length, slot: bn.warn.slot - 1, unit: UB }));
         }
-        if (C.bytesEqual(bn.info.text, ib)) log('   banner info : ' + bn.info.state + ' (kept)');
+        if (C.bytesEqual(bn.info.text, ib)) log(T('l_ban_keep', { which: 'info', state: stateLabel(bn.info.state) }));
         else {
           ubc = C.applyText(ubc, bn.info, ib, 'info');
-          log('   banner info : ' + bn.info.state + ' -> replaced  [' + ib.length + '/' + (bn.info.slot - 1) + ' bytes]');
+          log(T('l_ban_repl', { which: 'info', state: stateLabel(bn.info.state), n: ib.length, slot: bn.info.slot - 1, unit: UB }));
         }
-      } else log('   banner      : 跳过（选项关闭）');
+      } else log(T('l_ban_skip', { skip: T('skip_opt') }));
 
       var det;
       try { det = C.detectUsblog(files.ub); } catch (e2) { det = { state: 'na' }; }
       if (det.state === 'injected') {
-        log('   usblog      : already injected (kept)  [TRIG ' + C.hexOff(det.TRIG) + ']');
+        log(T('l_us_keep', { off: C.hexOff(det.TRIG) }));
       } else if (det.state === 'clean') {
-        if (!doUsblog) log('   usblog      : clean（跳过，选项关闭）');
+        if (!doUsblog) log(T('l_us_clean_skip', { skip: T('skip_opt') }));
         else {
           var anchors = C.locate(files.ub);
           ubc = C.buildUsblog(ubc, anchors, C.rd32(ubc, 0x30));
-          log('   usblog      : clean -> injected  [TRIG ' + C.hexOff(anchors.TRIG) +
-              ', PUTS ' + C.hexOff(anchors.PUTS) + ', dead ' + C.hexOff(anchors.FLAG) +
-              '..' + C.hexOff(anchors.DEAD_END) + ']');
+          log(T('l_us_inject', {
+            trig: C.hexOff(anchors.TRIG), puts: C.hexOff(anchors.PUTS),
+            f: C.hexOff(anchors.FLAG), e: C.hexOff(anchors.DEAD_END)
+          }));
           var uv = C.verifyUsblog(ubc, anchors, C.rd32(ubc, 0x30));
-          log('   verify      : ' + (uv.bad ? 'FAILED (' + uv.bad + ')' : 'ok - image looks correct'));
+          log(uv.bad ? T('l_verify_fail', { note: uv.bad }) : T('l_us_verify_ok'));
           if (uv.bad) fails++;
         }
       } else {
-        log('   usblog      : 不适用（未找到注入链）');
+        log(T('l_us_na'));
       }
-      log('   audit       : changed ' + C.countBytes(C.diffZones(files.ub, ubc)) + ' bytes');
+      log(T('l_audit', { n: C.countBytes(C.diffZones(files.ub, ubc)), unit: UB }));
       dls.push(['uboot-unlock-bootloader-usblog.img', ubc]);
-    } catch (e) { log('   ERROR: ' + (e.message || e)); fails++; }
+    } catch (e) { log(T('l_err', { msg: (e.message || e) })); fails++; }
   }
 
   if (files.tr && doUnlock) {
-    log('== trustos (' + files.tr.length + ' bytes) ==');
+    log(T('l_hdr', { what: 'trustos', n: files.tr.length, unit: UB }));
     try {
       var tr = C.findTrustos(files.tr);
       var trOut;
       if (tr.patched) {
         trOut = files.tr;
-        log('   avb returns : already patched (kept)  [' + tr.sites.length + ' sites]');
+        log(T('l_tr_keep', { n: tr.sites.length }));
       } else {
         trOut = C.patchTrustos(files.tr, tr);
-        log('   avb returns : protected -> patched  [' + tr.sites.map(C.hexOff).join(', ') + ']');
+        log(T('l_tr_patch', { sites: tr.sites.map(C.hexOff).join(', ') }));
       }
       var v2 = C.verifyTrustos(trOut, tr.sites.length);
-      log('   verify      : ' + (v2.ok ? 'ok  (' + v2.note + ')' : 'FAILED (' + v2.note + ')'));
+      log(v2.ok ? T('l_verify_ok', { note: v2.note }) : T('l_verify_fail', { note: v2.note }));
       if (!v2.ok) fails++;
-      log('   audit       : changed ' + C.countBytes(C.diffZones(files.tr, trOut)) + ' bytes');
+      log(T('l_audit', { n: C.countBytes(C.diffZones(files.tr, trOut)), unit: UB }));
       dls.push(['trustos-no-avb.img', trOut]);
-    } catch (e) { log('   ERROR: ' + (e.message || e)); fails++; }
+    } catch (e) { log(T('l_err', { msg: (e.message || e) })); fails++; }
   } else if (files.tr) {
-    log('== trustos : 跳过（选项关闭） ==');
+    log(T('l_tr_skip', { skip: T('skip_opt') }));
     dls.push(['trustos-no-avb.img', files.tr]);
   }
 
   log('');
-  log(fails === 0 ? 'ALL CHECKS PASSED' : (fails + ' CHECK(S) FAILED'));
+  log(fails === 0 ? T('all_ok') : T('all_fail', { n: fails }));
 
+  renderDls(dls);
+  $('dl-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderDls(dls) {
+  lastDls = dls;
   var box = $('downloads');
   box.innerHTML = '';
   for (var i = 0; i < dls.length; i++) {
@@ -203,11 +216,11 @@ function processAll() {
       var row = document.createElement('div');
       row.className = 'dl-row';
       var btn = document.createElement('button');
-      btn.textContent = '下载 ' + name;
+      btn.textContent = T('dl_btn', { name: name });
       btn.addEventListener('click', function () { download(name, bytes); });
       var meta = document.createElement('span');
       meta.className = 'meta';
-      meta.textContent = bytes.length + ' bytes · md5 ' + C.md5(bytes);
+      meta.textContent = T('dl_meta', { n: bytes.length, unit: T('unit_bytes'), md5: C.md5(bytes) });
       row.appendChild(btn);
       row.appendChild(meta);
       box.appendChild(row);
@@ -216,7 +229,7 @@ function processAll() {
   if (dls.length > 1) {
     var all = document.createElement('button');
     all.className = 'ghost';
-    all.textContent = '全部下载';
+    all.textContent = T('dl_all');
     all.addEventListener('click', function () {
       dls.forEach(function (item, k) {
         setTimeout(function () { download(item[0], item[1]); }, k * 400);
@@ -225,7 +238,6 @@ function processAll() {
     box.appendChild(all);
   }
   $('dl-card').hidden = dls.length === 0;
-  $('dl-card').scrollIntoView({ behavior: 'smooth' });
 }
 
 function init() {
@@ -235,13 +247,21 @@ function init() {
   $('go').addEventListener('click', function () {
     var btn = $('go');
     btn.disabled = true;
-    btn.textContent = '处理中…';
+    btn.textContent = T('btn_go_ing');
     setTimeout(function () {
       try { processAll(); }
-      catch (e) { log('ERROR: ' + (e.message || e)); }
+      catch (e) { log(T('l_err', { msg: (e.message || e) })); }
       btn.disabled = false;
-      btn.textContent = '处理';
+      btn.textContent = T('btn_go');
     }, 40);
+  });
+
+  window.addEventListener('ubp-langchange', function () {
+    ['spl', 'ub', 'tr'].forEach(function (w) {
+      if (files[w]) analyze(w);
+      else setBadge('b-' + w, 'idle', T('none'));
+    });
+    if (lastDls && lastDls.length) renderDls(lastDls);
   });
 }
 

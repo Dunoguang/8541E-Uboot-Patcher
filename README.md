@@ -57,13 +57,20 @@ external references; the files never leave the machine):
   uboot, secure-boot / AVB states for the others),
 - tick the functions you want (all three are on by default) and press
   the button,
-- download the results; every product shows its md5 next to the button.
+- download the results; every product shows its md5 next to the button,
+- switch the whole interface between 中文 / English / Português from the
+  top-right corner (the choice is remembered).
 
 The browser core (`web/core.js` + `web/tpl.js`) is a line-by-line port
 of the python engines and was verified byte-exact: `node web/test_node.js`
 re-runs the same four-case matrix as `tests/run_cases.py` (m9u full run,
 ai3 two-step, dw99 YC image, idempotent re-run) and must print
 `regress: PASS`.
+
+Interface strings live in `web/i18n.js` (zh / en / pt, 57 keys each);
+`node web/check_i18n.js` verifies that every key used by the HTML and
+the UI code exists in all three languages and that the dictionaries
+stay in sync (must print `I18N CHECK PASSED`).
 
 ## Test matrix (2026-10-02, all green)
 
